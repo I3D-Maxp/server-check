@@ -103,18 +103,18 @@ For manual commands after boot, `bash /opt/server-check/server-check.sh --list` 
 
 ## Reports and retrieval
 
-Automatic selection uses a **mounted** USB disk or partition labelled `SERVER_REPORTS`, with a read-write filesystem and USB transport. Otherwise it writes to RAM-backed `/run/server-check/reports`. `diag.report_location=/path` first checks an explicitly mounted, writable tmpfs or USB path; an internal disk or network mount is refused and selection falls back to the labelled USB or RAM. `diag.report_location=usb` also falls back to RAM when no approved USB mount exists. The image does not automatically mount discovered filesystems, including a labelled USB stick. BMC virtual CD/DVD media is not a report destination.
+Automatic selection uses a **mounted** USB disk or partition labelled `SERVER_REPORTS`, with a read-write filesystem and USB transport. Otherwise it writes to RAM-backed `/run/server-check/reports`. The live entry point makes `/reports` an alias to that approved destination and writes `/reports/report.json` and `/reports/report.txt`, plus a uniquely named raw report. `diag.report_location=/path` first checks an explicitly mounted, writable tmpfs or USB path; an internal disk or network mount is refused and selection falls back to the labelled USB or RAM. `diag.report_location=usb` also falls back to RAM when no approved USB mount exists. The image does not automatically mount discovered filesystems, including a labelled USB stick. BMC virtual CD/DVD media is not a report destination.
 
-The summary prints the full filename. On tty1, inspect it with `less /path/printed/after/Report`. To retrieve a RAM report through a separate USB stick, first verify the device with `lsblk -o PATH,TYPE,TRAN,LABEL,MOUNTPOINT`, then mount **only** the known USB partition and copy the report:
+The summary prints the full raw filename and the two fixed paths. On tty1, inspect `less /reports/report.txt` or `less /reports/report.json`. To retrieve RAM reports through a separate USB stick, first verify the device with `lsblk -o PATH,TYPE,TRAN,LABEL,MOUNTPOINT`, then mount **only** the known USB partition and copy the files:
 
 ```bash
 mkdir -p /mnt/server-reports
 mount -o rw /dev/disk/by-label/SERVER_REPORTS /mnt/server-reports
-cp -a /run/server-check/reports/*.txt /mnt/server-reports/
+cp -a /run/server-check/reports/report.json /run/server-check/reports/*.txt /mnt/server-reports/
 sync
 ```
 
-Do not run the mount command until the label has been confirmed on a USB device. A RAM report disappears on reboot. Filenames include a sanitized DMI serial or model, falling back to hostname, plus UTC time and a random suffix. `diag.shutdown=poweroff|reboot` is honored only when an approved non-RAM report destination was selected; the default is `never`.
+Do not run the mount command until the label has been confirmed on a USB device. A RAM report disappears on reboot. The raw filename includes a sanitized DMI serial or model, falling back to hostname, plus UTC time and a random suffix. `diag.shutdown=poweroff|reboot` is honored only when an approved non-RAM destination has both structured reports; the default is `never`.
 
 ## Local vendor RAID tools
 

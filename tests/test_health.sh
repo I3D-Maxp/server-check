@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fixture tests for the shell health classifiers. No real hardware is accessed.
 set -euo pipefail
+export SERVER_CHECK_STRUCTURED_REPORT=no
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/server-check-health-test.XXXXXX")

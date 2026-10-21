@@ -29,7 +29,7 @@ class CollectorTests(unittest.TestCase):
         })
 
     @patch("server_check.checks.cpu.time.sleep")
-    @patch("server_check.checks.cpu.os.getloadavg", return_value=(1.0, 2.0, 3.0))
+    @patch("server_check.checks.cpu.os.getloadavg", return_value=(1.0, 2.0, 3.0), create=True)
     @patch("server_check.checks.cpu.os.cpu_count", return_value=4)
     @patch("server_check.checks.cpu.read_text")
     def test_cpu_utilization_uses_two_samples(self, read_text, _count, _load, _sleep):
@@ -42,7 +42,7 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(result["model"], "Test CPU")
         self.assertEqual(result["utilization_percent"], 30.0)
 
-    @patch("server_check.checks.disks.os.statvfs")
+    @patch("server_check.checks.disks.os.statvfs", create=True)
     @patch("server_check.checks.disks.command_json")
     def test_disks_include_mounted_filesystem(self, command_json, statvfs):
         command_json.return_value = {"blockdevices": [{

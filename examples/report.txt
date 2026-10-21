@@ -1,0 +1,29 @@
+SERVER DIAGNOSTIC COMPLETE
+Hostname: server01
+Serial: ABC123
+Generated: 2026-10-21T12:00:00Z
+Overall: WARN
+
+Checks:
+cpu: PASS
+  Summary: CPU inventory collected; no CPU health claim.
+  Timestamp: 2026-10-21T12:00:00Z
+  Details:
+    sockets: 1
+    model: "Example Xeon"
+    source_verdict: "INFO"
+
+memory: PASS
+  Summary: No memory errors detected in available data.
+  Timestamp: 2026-10-21T12:00:00Z
+  Details:
+    edac_uncorrected: 0
+    edac_corrected: 0
+
+storage: WARN
+  Summary: One drive could not be tested behind PERC.
+  Timestamp: 2026-10-21T12:00:00Z
+  Details:
+    device: "/dev/sda"
+    Raw evidence:
+      [WARNING] SMART passthrough unavailable for /dev/sda.

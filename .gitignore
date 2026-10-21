@@ -1,4 +1,6 @@
 /build/
 /dist/
+__pycache__/
+*.py[cod]
 /iso/local/raid-tools/*
 !/iso/local/raid-tools/README.md

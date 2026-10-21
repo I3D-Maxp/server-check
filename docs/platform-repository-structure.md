@@ -1,6 +1,6 @@
 # Repository structure for the autonomous platform
 
-Status: proposed layout. **Existing** paths are already in this repository; the new Python and fixture directories are empty scaffolds; **planned** files describe later implementation. This design keeps the working Bash toolkit and ISO build intact while Python modules are added and tested.
+Status: incremental implementation. **Existing** paths are in this repository; `agent/` and `reporting/` now contain the Increment 4 plugin and reporting contracts. Other empty scaffolds and **planned** files describe later implementation. The working Bash toolkit and ISO build remain in place.
 
 ```text
 server-check/
@@ -20,15 +20,15 @@ server-check/
 │   ├── checks/                       existing Python inventory collectors; expand cautiously
 │   ├── control/                      empty scaffold: orchestrator, run state, ISO publication
 │   ├── redfish/                      empty scaffold: discovery and firmware-aware adapter
-│   ├── agent/                        empty scaffold: live-boot runner and HTTP read endpoint
-│   ├── reporting/                    empty scaffold: schema, verdicts, merge, text rendering
+│   ├── agent/                        plugin runner; live HTTP endpoint planned
+│   ├── reporting/                    report model, renderers, sink, Bash adapter
 │   └── fleet/                        empty scaffold: scheduling and multi-server policy
 ├── schemas/                         empty scaffold; report-v1.json planned
 ├── tests/
 │   ├── fixtures/redfish/             empty scaffold: scrubbed iDRAC 9 responses
 │   ├── fixtures/hardware/            empty scaffold: utility, EDAC, sensor responses
 │   ├── test_iso.sh                   existing ISO static and mocked tests
-│   └── test_*.py                     existing tests; add orchestration/agent tests
+│   └── test_*.py                     inventory and reporting unit tests
 ├── tools/
 │   ├── build-iso.sh                  existing live-build command
 │   ├── validate-iso.sh               existing ISO structure/checksum validator
@@ -48,9 +48,9 @@ server-check/
 
 - `control/` is the only place that makes Redfish state-changing requests. Its client first discovers action targets and allowable values; no hard-coded iDRAC URI is treated as universal.
 - `agent/` runs inside the live image. It owns passive in-band checks, RAM/approved-USB report files, delivery, and the optional read-only HTTP endpoint. It cannot request resets, firmware changes, or media ejection.
-- `reporting/` defines one normalized finding model shared by Redfish and live checks. A report schema version prevents the controller from silently accepting incompatible agent output.
+- `reporting/` defines one normalized finding model for the live checks and future Redfish checks. Reports carry a schema version so a future controller can reject incompatible output.
 - `checks/` Bash scripts remain usable throughout migration. The existing Python collectors are inventory-oriented; they are **not** already equivalent to the richer Bash health checks. Each migrated check needs fixture parity and physical-hardware verification before it replaces a Bash module.
-- `iso/` continues to use the existing Debian live-build workflow. A future build stages Python agent packages and a run-specific bootstrap config while preserving storage isolation and the interactive shell.
+- `iso/` continues to use the existing Debian live-build workflow. The build now stages the Python reporting package; run-specific bootstrap config remains future work.
 - `server-list.yaml` holds target identifiers and secret **references**, never usernames/passwords or embedded authentication tokens. Generated run credentials and reports belong in ignored state directories or an external secret/report store.
 
 ## Initial inventory format

@@ -9,6 +9,7 @@ AVAILABLE=(cpu memory storage raid network pci sensors hardware-errors firmware 
 SELECTED=()
 RESULT_NAMES=()
 RESULT_VERDICTS=()
+RESULT_TIMESTAMPS=()
 CLI_CONFIG=''
 CLI_MODE=''
 CLI_OUTPUT=''
@@ -146,7 +147,7 @@ RUN_PCIE=yes
 RUN_LOG_ANALYSIS=yes
 RUN_FIRMWARE=yes
 RUN_BMC=yes
-REPORT_FORMAT=text
+REPORT_FORMAT=both
 REPORT_LOCATION=${TMPDIR:-/tmp}/server-check-reports
 REPORT_TARGET=path
 CHECK_TIMEOUT_SECONDS=300
@@ -184,7 +185,8 @@ for key in AUTO_START RUN_CPU RUN_MEMORY RUN_STORAGE RUN_SMART RUN_RAID RUN_NETW
     value=${!key}
     case $value in yes|no) ;; *) printf '%s must be yes or no.\n' "$key" >&2; exit 3 ;; esac
 done
-[[ $REPORT_FORMAT == text ]] || { printf 'Only REPORT_FORMAT=text is supported.\n' >&2; exit 3; }
+case $REPORT_FORMAT in text|both) ;; *) printf 'REPORT_FORMAT must be text or both.\n' >&2; exit 3 ;; esac
+case ${SERVER_CHECK_STRUCTURED_REPORT:-yes} in yes|no) ;; *) printf 'SERVER_CHECK_STRUCTURED_REPORT must be yes or no.\n' >&2; exit 3 ;; esac
 [[ -n $REPORT_LOCATION ]] || { printf 'REPORT_LOCATION cannot be empty.\n' >&2; exit 3; }
 case $REPORT_TARGET in temp|usb|path) ;; *) printf 'REPORT_TARGET must be temp, usb, or path.\n' >&2; exit 3 ;; esac
 [[ $CHECK_TIMEOUT_SECONDS =~ ^[0-9]+$ ]] && ((10#$CHECK_TIMEOUT_SECONDS >= 1 && 10#$CHECK_TIMEOUT_SECONDS <= 86400)) || {
@@ -340,9 +342,23 @@ for check in "${SELECTED[@]}"; do
             printf '[WARNING] %s exited with code %s; remaining checks continue.\n' "$check" "$check_exit" | tee -a "$REPORT"
         fi
     fi
+    if [[ $verdict == INFO ]]; then
+        case $check in
+            memory|storage|smart|raid|sensors|hardware-errors)
+                verdict=WARNING
+                printf '[WARNING] %s health data was unavailable; inventory alone is not a health pass.\n' "$check" | tee -a "$REPORT" ;;
+            *)
+                if [[ $REPORT_FORMAT == both && ${SERVER_CHECK_STRUCTURED_REPORT:-yes} == yes ]] && \
+                    grep -Eiq 'unavailable \(|could not be collected' "$CHECK_OUTPUT"; then
+                    verdict=WARNING
+                    printf '[WARNING] %s inventory was incomplete; inspect the raw evidence.\n' "$check" | tee -a "$REPORT"
+                fi ;;
+        esac
+    fi
     rm -f -- "$CHECK_OUTPUT"
     RESULT_NAMES+=("$check")
     RESULT_VERDICTS+=("$verdict")
+    RESULT_TIMESTAMPS+=("$(date -u +%Y-%m-%dT%H:%M:%SZ)")
 done
 
 overall=INFO
@@ -354,6 +370,10 @@ for verdict in "${RESULT_VERDICTS[@]}"; do
         OK) [[ $overall == INFO ]] && overall=OK ;;
     esac
 done
+if ((${#RESULT_NAMES[@]} == 0)); then
+    overall=WARNING
+    exit_status=1
+fi
 {
     printf '\nSERVER DIAGNOSTIC COMPLETE\n'
     printf 'Overall: %s\n' "$overall"
@@ -365,4 +385,23 @@ done
     printf 'The system remains running. Review the report and raw evidence before acting.\n'
 } | tee -a "$REPORT"
 ((PIPESTATUS[1] == 0)) || { printf 'Could not write report summary.\n' >&2; exit 3; }
+if [[ $REPORT_FORMAT == both && ${SERVER_CHECK_STRUCTURED_REPORT:-yes} == yes ]]; then
+    command -v python3 >/dev/null 2>&1 || {
+        printf 'Structured reporting requires python3. Raw report: %s\n' "$REPORT" >&2
+        exit 3
+    }
+    report_args=()
+    for index in "${!RESULT_NAMES[@]}"; do
+        report_args+=(--result "${RESULT_NAMES[index]}=${RESULT_VERDICTS[index]}@${RESULT_TIMESTAMPS[index]}")
+    done
+    structured_dir=${SERVER_CHECK_STRUCTURED_DIR:-$REPORT_LOCATION}
+    if PYTHONPATH="$SCRIPT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m server_check.reporting \
+        --legacy-report "$REPORT" --output-dir "$structured_dir" "${report_args[@]}"; then
+        report_status=0
+    else
+        report_status=$?
+    fi
+    ((report_status <= 2)) || exit 3
+    ((report_status > exit_status)) && exit_status=$report_status
+fi
 exit "$exit_status"

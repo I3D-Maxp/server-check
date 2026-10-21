@@ -41,6 +41,20 @@ if ! bash "$runtime/select-report.sh" "$REPORT_LOCATION" "$state_dir/report.env"
 fi
 source "$state_dir/report.env"
 
+# /reports is a live-root alias to the destination already approved by
+# select-report.sh. It never points to a newly discovered internal disk.
+reports_alias=${SERVER_CHECK_REPORTS_ALIAS:-/reports}
+if [[ -L $reports_alias ]]; then
+    if [[ $(readlink -- "$reports_alias") != "$REPORT_LOCATION" ]]; then
+        printf 'Refusing an unexpected /reports destination.\n' >&2
+        shell_or_exit 3
+    fi
+elif [[ -e $reports_alias ]] || ! ln -s -- "$REPORT_LOCATION" "$reports_alias"; then
+    printf 'Could not establish the approved /reports destination.\n' >&2
+    shell_or_exit 3
+fi
+export SERVER_CHECK_STRUCTURED_DIR=$reports_alias
+
 settings=(--set "RUN_NETWORK=$NETWORK")
 case $PROFILE in
     quick)
@@ -61,7 +75,7 @@ status=$?
 
 # Explicit shutdown is accepted only after a durable report was written.
 if [[ $SHUTDOWN != never ]]; then
-    if [[ $REPORT_TARGET == path && -d $REPORT_LOCATION ]]; then
+    if ((status <= 2)) && [[ $REPORT_TARGET == path && -s $reports_alias/report.json && -s $reports_alias/report.txt ]]; then
         printf 'Explicit diag.shutdown=%s requested; report is at %s\n' "$SHUTDOWN" "$REPORT_LOCATION"
         systemctl "$SHUTDOWN"
         exit 3

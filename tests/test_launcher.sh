@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test for check selection and report creation, including on a non-Linux dev host.
 set -euo pipefail
+export SERVER_CHECK_STRUCTURED_REPORT=no
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 TEST_DIR=$(mktemp -d)

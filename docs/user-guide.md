@@ -11,20 +11,21 @@ This guide describes the toolkit on an existing Linux installation or live Linux
    bash server-check.sh --dependencies
    ```
 
-3. Run the configured suite manually. The supplied config is in manual mode and writes a text report under `/tmp/server-check-reports`:
+3. Run the configured suite manually. The supplied config is in manual mode and writes JSON, text, and a raw evidence report under `/tmp/server-check-reports`. Python 3 is required for the structured reports:
 
    ```bash
    bash server-check.sh
    echo $?
    ```
 
-4. At completion, read the `Overall` and per-check verdicts, then open the path printed after `Report:`:
+4. At completion, read the `Overall` and per-check verdicts, then open the fixed reports or the unique raw evidence path printed after `Report:`:
 
    ```bash
-   less /tmp/server-check-reports/server-check-20261020T120000Z-ABC123.txt
+   less /tmp/server-check-reports/report.txt
+   less /tmp/server-check-reports/report.json
    ```
 
-   The filename above is an example; use the path printed by your run. The report includes the raw utility output behind each finding. Save any `/tmp` report elsewhere before rebooting.
+   The raw report has a unique filename printed by the launcher. Both fixed reports include the evidence behind each finding. Save any `/tmp` report elsewhere before rebooting.
 
 The toolkit does not format disks, change RAID or firmware, run destructive storage tests, or reboot. It writes only the report to the selected destination.
 
@@ -50,7 +51,7 @@ bash server-check.sh --check smart
 | Mounted USB storage | `bash server-check.sh --report-target usb` | Selects an already-mounted, writable USB filesystem and creates a `server-check-reports` directory there. It does not mount a device. If none qualifies, the command exits 3 without falling back to an internal disk. |
 | Explicit path | `bash server-check.sh --output-dir /mnt/diag-usb/reports` | Writes to that absolute path. Its parent directory must already exist. Choose the mount deliberately; an explicit path can point to a server disk. |
 
-The completion summary gives the exact report filename. New report files use restrictive permissions because inventory may contain serial numbers and addresses. There is no network upload option yet.
+The completion summary gives the exact raw report filename and the fixed `report.json` and `report.txt` paths. New report files use restrictive permissions because inventory may contain serial numbers and addresses. There is no network upload option yet.
 
 ## Configure a repeatable run
 
@@ -88,7 +89,7 @@ These are the main settings:
 | `RUN_FIRMWARE`, `RUN_BMC` | Optional inventory checks, also `yes` or `no`. |
 | `REPORT_TARGET=temp|usb|path` | Destination selection described above. |
 | `REPORT_LOCATION=/absolute/path` | Used when `REPORT_TARGET=path`. The default is `/tmp/server-check-reports`. |
-| `REPORT_FORMAT=text` | The only format currently supported. |
+| `REPORT_FORMAT=both|text` | `both` (default) writes JSON and human-readable text through the Python reporter; `text` keeps only the unique legacy raw report. |
 | `CHECK_TIMEOUT_SECONDS=300` | Per-check limit in auto mode, from 1 to 86400 seconds. No long-running stress tests are included. |
 
 Run with a copied config:
@@ -107,7 +108,7 @@ bash server-check.sh --config /tmp/server-check-auto.conf --mode interactive --s
 
 ## Run unattended on an existing Linux console
 
-To try the boot workflow before the ISO exists, use the wrapper on a terminal:
+To try the boot workflow without mounting the ISO, use the wrapper on a terminal:
 
 ```bash
 bash unattended.sh --config /tmp/server-check-auto.conf

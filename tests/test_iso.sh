@@ -7,6 +7,7 @@ base=$(cd -- "${TMPDIR:-/tmp}" && pwd)
 case $(cd -- "$tmp" && pwd) in "$base"/server-check-iso-test.*) ;; *) exit 3 ;; esac
 trap 'rm -rf -- "$tmp"' EXIT
 mkdir -p "$tmp/bin" "$tmp/run" "$tmp/usb" "$tmp/internal" "$tmp/mock-root/iso"
+mkdir -p "$tmp/run/reports"
 
 bash -n "$root/server-check.sh" "$root/unattended.sh" "$root/iso/runtime/"*.sh "$root/tools/build-iso.sh" "$root/tools/validate-iso.sh"
 bash "$root/tools/validate-iso.sh" --static > "$tmp/static.out"
@@ -67,9 +68,11 @@ exit 1
 EOF
 printf 'diag.mode=auto diag.autostart=yes diag.profile=standard\n' > "$tmp/cmdline"
 if SERVER_CHECK_ROOT="$tmp/mock-root" SERVER_CHECK_BOOT_CONFIG="$tmp/boot.conf" \
-    SERVER_CHECK_CMDLINE="$tmp/cmdline" SERVER_CHECK_STATE_DIR="$tmp/state" MOCK_USB=no \
+    SERVER_CHECK_CMDLINE="$tmp/cmdline" SERVER_CHECK_STATE_DIR="$tmp/state" \
+    SERVER_CHECK_REPORTS_ALIAS="$tmp/reports-alias" MOCK_USB=no \
     bash "$root/iso/runtime/entrypoint.sh" > "$tmp/entry.out" 2>&1; then exit 1; else status=$?; fi
-[[ $status == 1 ]]
+[[ $status == 1 ]] || { cat "$tmp/entry.out" >&2; exit 1; }
+[[ -L $tmp/reports-alias && $(readlink -- "$tmp/reports-alias") == "$tmp/run/reports" ]]
 grep -Fq 'MOCK LAUNCHER ARGS: --boot' "$tmp/entry.out"
 grep -Fq 'SERVER DIAGNOSTIC COMPLETE' "$tmp/entry.out"
 grep -Fq 'Server Check console ready. Diagnostic exit: 1' "$tmp/entry.out"

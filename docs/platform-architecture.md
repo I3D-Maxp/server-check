@@ -1,6 +1,6 @@
 # Autonomous server health platform architecture
 
-Status: design proposal, 2026-10-21. No Redfish deployment or result service is implemented yet. The existing Bash toolkit and Debian live-build definition remain the diagnostic baseline.
+Status: design proposal, 2026-10-21. The local JSON/text reporting layer is now implemented; Redfish deployment and HTTP result collection are not. The existing Bash toolkit and Debian live-build definition remain the diagnostic baseline.
 
 ## Scope and boundaries
 

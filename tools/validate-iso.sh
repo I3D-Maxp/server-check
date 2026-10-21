@@ -7,6 +7,11 @@ static_layout() {
     for required in \
         iso/auto/config \
         iso/config/package-lists/server-check.list.chroot \
+        src/server_check/reporting/model.py \
+        src/server_check/reporting/render.py \
+        src/server_check/reporting/writer.py \
+        src/server_check/reporting/legacy.py \
+        src/server_check/reporting/__main__.py \
         iso/config/bootloaders/isolinux/isolinux.cfg \
         iso/config/bootloaders/syslinux_common/live.cfg.in \
         iso/config/bootloaders/grub-pc/grub.cfg \
@@ -17,6 +22,9 @@ static_layout() {
         iso/runtime/parse-cmdline.sh iso/runtime/select-report.sh iso/runtime/entrypoint.sh; do
         [[ -s $root/$required ]] || { printf 'Missing ISO source: %s\n' "$required" >&2; return 3; }
     done
+    grep -Fxq python3 "$root/iso/config/package-lists/server-check.list.chroot" || {
+        printf 'ISO package list is missing python3.\n' >&2; return 3;
+    }
     for title in 'Automatic Safe Diagnostics' 'Interactive Diagnostics' 'Linux Rescue Shell'; do
         grep -Fq "$title" "$root/iso/config/bootloaders/syslinux_common/live.cfg.in"
         grep -Fq "$title" "$root/iso/config/bootloaders/grub-pc/grub.cfg"
@@ -55,7 +63,7 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/server-check-iso-verify.XXXXXX")
 trap 'rm -f -- "$tmp/filesystem.squashfs"; rmdir -- "$tmp"' EXIT
 xorriso -osirrox on -indev "$1" -extract /live/filesystem.squashfs "$tmp/filesystem.squashfs" >/dev/null 2>&1
 contents=$(unsquashfs -ll "$tmp/filesystem.squashfs")
-for name in opt/server-check/server-check.sh opt/server-check/iso/runtime/entrypoint.sh etc/systemd/system/server-check-console.service etc/server-check/boot.conf; do
+for name in opt/server-check/server-check.sh opt/server-check/src/server_check/reporting/model.py opt/server-check/src/server_check/reporting/__main__.py opt/server-check/iso/runtime/entrypoint.sh etc/systemd/system/server-check-console.service etc/server-check/boot.conf; do
     grep -Fq "$name" <<< "$contents" || { printf 'Live filesystem is missing %s.\n' "$name" >&2; exit 3; }
 done
 printf 'ISO structure, BIOS/UEFI entries, live contents, and checksum passed.\n'

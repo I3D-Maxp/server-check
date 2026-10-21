@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export SERVER_CHECK_STRUCTURED_REPORT=no
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/server-check-inc3.XXXXXX")
 TEST_ROOT=$(cd -- "${TMPDIR:-/tmp}" && pwd)

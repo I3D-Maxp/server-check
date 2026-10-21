@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "hostname": "server01",
+  "serial": "ABC123",
+  "overall_status": "WARN",
+  "generated_at": "2026-10-21T12:00:00Z",
+  "checks": [
+    {
+      "name": "cpu",
+      "status": "PASS",
+      "summary": "CPU inventory collected; no CPU health claim.",
+      "details": {
+        "sockets": 1,
+        "model": "Example Xeon",
+        "source_verdict": "INFO"
+      },
+      "timestamp": "2026-10-21T12:00:00Z"
+    },
+    {
+      "name": "memory",
+      "status": "PASS",
+      "summary": "No memory errors detected in available data.",
+      "details": {
+        "edac_uncorrected": 0,
+        "edac_corrected": 0
+      },
+      "timestamp": "2026-10-21T12:00:00Z"
+    },
+    {
+      "name": "storage",
+      "status": "WARN",
+      "summary": "One drive could not be tested behind PERC.",
+      "details": {
+        "device": "/dev/sda",
+        "raw_evidence": "[WARNING] SMART passthrough unavailable for /dev/sda."
+      },
+      "timestamp": "2026-10-21T12:00:00Z"
+    }
+  ]
+}

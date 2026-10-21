@@ -6,6 +6,8 @@ Read-only Linux server diagnostics with a Debian live-build ISO definition for B
 
 **Start here:** [User guide](docs/user-guide.md) for setup, commands, configuration, reports, and result interpretation.
 
+**Reports:** [Increment 4 reporting guide](docs/reporting-framework.md) describes the PASS/WARN/FAIL JSON and text reports. The unattended ISO writes `/reports/report.json` and `/reports/report.txt` through its approved RAM or USB destination.
+
 **Autonomous iDRAC 9 platform design:** [Architecture](docs/platform-architecture.md), [repository structure](docs/platform-repository-structure.md), [implementation plan](docs/platform-implementation-plan.md), and [technology decisions](docs/platform-technology-decisions.md). The [server inventory template](server-list.yaml) is intentionally empty. Redfish deployment, Python health orchestration, and HTTP report collection are planned phases; the current ISO and Bash toolkit remain the working baseline.
 
 ## Run
@@ -29,7 +31,7 @@ The default report directory is `${TMPDIR:-/tmp}/server-check-reports`, which wo
 
 `MODE=interactive` is the default manual CLI mode: a technician starts the launcher and can use `--check NAME` for one or more checks. `MODE=auto` runs every enabled safe check without prompts and gives each check a `CHECK_TIMEOUT_SECONDS` limit. A failed or timed-out check is recorded and the remaining checks run. The final report and console show an overall verdict and a verdict for every selected check. The ISO's tty1 service runs `iso/runtime/entrypoint.sh`; `./unattended.sh` is a manual wrapper. Both leave an interactive shell on an attached terminal after completion. Diagnostics start only when `AUTO_START=yes` and `MODE=auto`. Without a terminal, the wrapper returns the diagnostic exit status.
 
-The configuration is literal `KEY=VALUE` text, never executed as shell code. It supports `MODE`, `AUTO_START`, `RUN_CPU`, `RUN_MEMORY`, `RUN_STORAGE`, `RUN_SMART`, `RUN_RAID`, `RUN_NETWORK`, `RUN_SENSORS`, `RUN_PCIE`, `RUN_LOG_ANALYSIS`, `RUN_FIRMWARE`, `RUN_BMC`, `REPORT_FORMAT`, `REPORT_TARGET`, `REPORT_LOCATION`, and `CHECK_TIMEOUT_SECONDS`. `RUN_STORAGE` controls block-device inventory and `RUN_SMART` controls SMART/NVMe health; the storage check runs once when both are enabled. `REPORT_FORMAT=text` is currently the only format. Individual `--check` selections override the run switches for that invocation. `--check smart` runs health without general storage inventory. CLI `--mode`, `--report-target`, `--output-dir`, and repeatable `--set KEY=VALUE` take precedence over the file.
+The configuration is literal `KEY=VALUE` text, never executed as shell code. It supports `MODE`, `AUTO_START`, `RUN_CPU`, `RUN_MEMORY`, `RUN_STORAGE`, `RUN_SMART`, `RUN_RAID`, `RUN_NETWORK`, `RUN_SENSORS`, `RUN_PCIE`, `RUN_LOG_ANALYSIS`, `RUN_FIRMWARE`, `RUN_BMC`, `REPORT_FORMAT`, `REPORT_TARGET`, `REPORT_LOCATION`, and `CHECK_TIMEOUT_SECONDS`. `RUN_STORAGE` controls block-device inventory and `RUN_SMART` controls SMART/NVMe health; the storage check runs once when both are enabled. `REPORT_FORMAT=both` is the default and requires Python 3; `text` keeps only the legacy raw report. Individual `--check` selections override the run switches for that invocation. `--check smart` runs health without general storage inventory. CLI `--mode`, `--report-target`, `--output-dir`, and repeatable `--set KEY=VALUE` take precedence over the file.
 
 To enable unattended diagnostics outside the ISO, set `MODE=auto` and `AUTO_START=yes` in a copied config. Use `--config /path/to/config` or `SERVER_CHECK_CONFIG` to select it. The ISO definition starts diagnostics from a systemd console service and selects a mounted, labelled USB report volume or RAM. Build and boot validation on Linux is still required; RAM reports are lost on reboot.
 
@@ -43,7 +45,7 @@ Each check prints raw relevant evidence followed by a verdict. The complete repo
 | `FAIL` | An explicit health failure, critical sensor signal, or uncorrected/fatal hardware event | 2 |
 | Runtime error | Invalid configuration, missing launcher dependency, or report destination failure | 3 |
 
-The summary covers only devices and sources accessible during that run. `OK` does not guarantee that all hardware is healthy. An inventory-only check emits `INFO`. A logged event can warrant investigation without proving that a component is failing now.
+The summary covers only devices and sources accessible during that run. `OK` does not guarantee that all hardware is healthy. An inventory-only check emits `INFO`. The structured report maps the check to `PASS` only when its inventory was collected and explicitly says that inventory is not a health claim. A logged event can warrant investigation without proving that a component is failing now.
 
 ## Health checks
 
@@ -76,9 +78,10 @@ bash tests/test_health.sh
 bash tests/test_unattended.sh
 bash tests/test_increment3.sh
 bash tests/test_iso.sh
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-The shell health tests use mocked utilities and EDAC counters; they do not access server hardware. Run the full toolkit on representative physical hardware before relying on it operationally. The earlier Python CLI under `src/server_check/` and its tests are retained, but `server-check.sh` does not depend on Python.
+The shell health tests use mocked utilities and EDAC counters; they do not access server hardware. Run the full toolkit on representative physical hardware before relying on it operationally. The earlier Python inventory CLI under `src/server_check/` and its tests are retained. The Bash launcher now calls the independent Python reporting package when `REPORT_FORMAT=both`.
 
 Known limits: vendor RAID output varies by controller firmware and CLI version; unsupported controllers and hidden member drives remain untested. Sensor numeric parsing covers common lm-sensors temperature, fan, and voltage lines, while other formats still rely on explicit alarm flags or BMC status. EDAC and kernel messages can be cumulative or historical. USB persistence requires media that is already mounted read-write; the toolkit does not mount it. Network upload remains future work. The ISO still needs a real Linux build and boot test.
 

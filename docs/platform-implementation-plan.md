@@ -1,6 +1,6 @@
 # Implementation plan: iDRAC 9 to autonomous report
 
-Status: design and execution order, 2026-10-21. No phase below is complete. Work begins from the existing Bash checks, Python inventory package, and Debian live-build ISO definition.
+Status: design and execution order, 2026-10-21. No phase below is complete. Increment 4 has implemented the local JSON/text reporting contract and Bash adapter described in [the reporting guide](reporting-framework.md). Redfish control, full Python check migration, and network collection remain future work.
 
 ## Release gates before deployment
 
