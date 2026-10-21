@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+# Mask optional services that can activate, mount, swap, or modify host storage.
+systemctl mask \
+    getty@tty1.service \
+    swap.target \
+    mdadm-raid.service mdmonitor.service \
+    lvm2-monitor.service lvm2-activation.service \
+    lvm2-pvscan@.service \
+    udisks2.service \
+    systemd-cryptsetup@.service \
+    NetworkManager.service systemd-networkd.service networking.service \
+    rasdaemon.service
+systemctl enable server-check-console.service
+# Store the mdadm auto-assembly policy in the initramfs as well as the rootfs.
+update-initramfs -u -k all

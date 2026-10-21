@@ -1,0 +1,9 @@
+# Design-stage inventory. An empty list is intentionally non-deployable.
+# Add targets only after the Phase 1 controller and diagnostic network preflight exist.
+# Keep credentials in a secret provider; reference them by name, never by value.
+schema_version: 1
+defaults:
+  profile: standard
+  return_to_disk: false
+  report_upload_required: true
+servers: []

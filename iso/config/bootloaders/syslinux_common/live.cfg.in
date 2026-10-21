@@ -1,0 +1,18 @@
+LABEL live-auto
+  MENU LABEL Automatic Safe Diagnostics
+  MENU DEFAULT
+  LINUX @LINUX@
+  INITRD @INITRD@
+  APPEND @APPEND_LIVE@ diag.mode=auto diag.autostart=yes diag.profile=standard
+
+LABEL live-interactive
+  MENU LABEL Interactive Diagnostics
+  LINUX @LINUX@
+  INITRD @INITRD@
+  APPEND @APPEND_LIVE@ diag.mode=interactive diag.autostart=no
+
+LABEL live-rescue
+  MENU LABEL Linux Rescue Shell
+  LINUX @LINUX@
+  INITRD @INITRD@
+  APPEND @APPEND_LIVE@ diag.mode=rescue diag.autostart=no

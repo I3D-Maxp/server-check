@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Build the Debian live ISO in an isolated workspace under build/.
+set -euo pipefail
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+
+check_deps() {
+    local missing=0 tool
+    if [[ $(uname -s) != Linux ]]; then
+        printf 'ISO builds require an x86_64 Debian 13 Linux host (this host: %s).\n' "$(uname -s)" >&2
+        missing=1
+    fi
+    for tool in lb debootstrap xorriso mksquashfs unsquashfs mcopy mkfs.vfat sha256sum; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            printf 'Missing build dependency: %s\n' "$tool" >&2
+            missing=1
+        fi
+    done
+    ((missing == 0)) || return 3
+}
+
+if [[ ${1:-} == --check-deps ]]; then check_deps; exit $?; fi
+[[ $# == 0 ]] || { printf 'Usage: bash tools/build-iso.sh [--check-deps]\n' >&2; exit 3; }
+check_deps || exit 3
+[[ $(uname -m) == x86_64 ]] || { printf 'Build host must be x86_64.\n' >&2; exit 3; }
+[[ $(id -u) == 0 ]] || { printf 'Run the ISO build as root (sudo bash tools/build-iso.sh).\n' >&2; exit 3; }
+
+mkdir -p -- "$root/build" "$root/dist"
+work=$(mktemp -d "$root/build/iso-work.XXXXXX")
+printf 'Build workspace: %s\n' "$work"
+cp -a "$root/iso/auto" "$root/iso/config" "$work/"
+chmod +x "$work/auto/config" "$work/config/hooks/live/9000-server-check-isolation.hook.chroot"
+boot_timeout=${ISO_BOOT_TIMEOUT_SECONDS:-10}
+[[ $boot_timeout =~ ^[0-9]+$ ]] && ((boot_timeout >= 1 && boot_timeout <= 60)) || {
+    printf 'ISO_BOOT_TIMEOUT_SECONDS must be 1..60.\n' >&2; exit 3;
+}
+sed -i "s/@BOOT_TIMEOUT_TENTHS@/$((boot_timeout * 10))/" "$work/config/bootloaders/isolinux/isolinux.cfg"
+sed -i "s/@BOOT_TIMEOUT_SECONDS@/$boot_timeout/" "$work/config/bootloaders/grub-pc/grub.cfg"
+target="$work/config/includes.chroot/opt/server-check"
+mkdir -p -- "$target"
+cp -a "$root/server-check.sh" "$root/unattended.sh" "$root/checks" "$root/config" "$root/tools" "$target/"
+mkdir -p -- "$target/iso"
+cp -a "$root/iso/runtime" "$target/iso/"
+
+# Authorised vendor binaries are supplied locally by the operator. No download occurs.
+vendor_dir="$root/iso/local/raid-tools"
+if [[ -d $vendor_dir ]]; then
+    mkdir -p -- "$work/config/includes.chroot/usr/local/sbin"
+    for tool in storcli perccli ssacli; do
+        if [[ -f $vendor_dir/$tool ]]; then
+            [[ -x $vendor_dir/$tool ]] || { printf '%s must be executable.\n' "$vendor_dir/$tool" >&2; exit 3; }
+            cp -p -- "$vendor_dir/$tool" "$work/config/includes.chroot/usr/local/sbin/$tool"
+        fi
+    done
+fi
+
+(
+    cd "$work"
+    export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-1735689600}
+    lb config
+    lb build
+)
+mapfile -t images < <(find "$work" -maxdepth 1 -type f -name '*.iso' -print)
+[[ ${#images[@]} == 1 ]] || { printf 'Expected one ISO in %s; found %s.\n' "$work" "${#images[@]}" >&2; exit 3; }
+iso="$root/dist/server-check-amd64.iso"
+cp -- "${images[0]}" "$iso"
+(cd "$root/dist" && sha256sum server-check-amd64.iso > server-check-amd64.iso.sha256)
+bash "$root/tools/validate-iso.sh" "$iso"
+printf 'ISO: %s\nChecksum: %s.sha256\n' "$iso" "$iso"

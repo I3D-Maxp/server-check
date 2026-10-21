@@ -1,0 +1,19 @@
+[Unit]
+Description=Server Check live console
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /opt/server-check/iso/runtime/entrypoint.sh
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
